@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}סינון CSV וטבלאות - מערכת הנהלת חשבונות{% endblock %}
+
+{% block content %}
+<div class="csv-filter-container">
+    <!-- Upload Section -->
+    <div class="upload-section">
+        <div class="upload-card">
+            <h2>העלאת קובץ נתונים</h2>
+            <p class="upload-description">
+ העלה קובץ CSV עם נתוני התשלומים לעיבוד אוטומטי
+המערכת תפיק קובץ Excel מסודר עם המיפוי הנדרש
+            </p>
+
+            <form id="uploadForm" action="/upload-csv-filter" method="post" enctype="multipart/form-data">
+                <div class="file-input-container">
+                    <input type="file" id="file" name="file" class="file-input" accept=".csv">
+                    <label for="file" class="file-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span id="file-label-text">בחר קובץ CSV</span>
+                    </label>
+                    <div id="fileInfo" class="file-info" style="display: none;">
+                        <i class="fas fa-file-csv"></i>
+                        <span id="fileName"></span>
+                        <small id="fileSize"></small>
+                    </div>
+                </div>
+
+                <button type="submit" id="uploadBtn" class="upload-btn" disabled>
+                        עיבוד הקובץ
+                                    <i class="fas fa-upload"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<!-- Loading Modal -->
+<div id="loadingModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="loading-spinner"></div>
+        <h3>מעבד את הקובץ...</h3>
+        <p>אנא המתן</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Custom handling for CSV filter upload
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const loadingModal = document.getElementById('loadingModal');
+
+            if (loadingModal) {
+                loadingModal.style.display = 'flex';
+            }
+
+            fetch('/upload-csv-filter', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (loadingModal) {
+                    loadingModal.style.display = 'none';
+                }
+
+                if (data.success) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    if (window.HapoelApp && window.HapoelApp.utils) {
+                        window.HapoelApp.utils.showError(data.error);
+                    } else {
+                        alert('שגיאה: ' + data.error);
+                    }
+                }
+            })
+            .catch(error => {
+                if (loadingModal) {
+                    loadingModal.style.display = 'none';
+                }
+                console.error('Error:', error);
+                if (window.HapoelApp && window.HapoelApp.utils) {
+                    window.HapoelApp.utils.showError('שגיאה בהעלאת הקובץ');
+                } else {
+                    alert('שגיאה בהעלאת הקובץ');
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

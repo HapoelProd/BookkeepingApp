@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="upload-container">
+    <div class="upload-card">
+        <h2>העלאת קובץ נתונים</h2>
+        <p class="upload-description">
+            העלה קובץ CSV עם נתוני התשלומים לעיבוד אוטומטי<br>
+            המערכת תפיק קובץ Excel מסודר עם הדוחות הנדרשים
+        </p>
+
+        <form id="uploadForm" action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+            <div class="file-input-container">
+                <input type="file" id="file" name="file" accept=".csv" required class="file-input">
+                <label for="file" class="file-label">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span id="file-label-text">בחר קובץ CSV</span>
+                </label>
+            </div>
+
+            <div class="file-info" id="fileInfo" style="display: none;">
+                <i class="fas fa-file-check"></i>
+                <span id="fileName"></span>
+                <span id="fileSize"></span>
+            </div>
+
+            <button type="submit" id="uploadBtn" class="upload-btn" disabled>
+                עיבוד הקובץ
+                           <i class="fas fa-upload"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="loadingModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="loading-spinner"></div>
+        <h3>מעבד את הקובץ...</h3>
+        <p>אנא המתן</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('file');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const fileLabelText = document.getElementById('file-label-text');
+    const uploadForm = document.getElementById('uploadForm');
+    const loadingModal = document.getElementById('loadingModal');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'flex';
+            uploadBtn.disabled = false;
+            fileLabelText.textContent = 'קובץ נבחר בהצלחה';
+        } else {
+            fileInfo.style.display = 'none';
+            uploadBtn.disabled = true;
+            fileLabelText.textContent = 'בחר קובץ CSV';
+        }
+    });
+
+    uploadForm.addEventListener('submit', function(e) {
+        loadingModal.style.display = 'flex';
+    });
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+});
+</script>
+{% endblock %}

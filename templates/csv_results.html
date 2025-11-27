@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}תוצאות מיפוי תשלום - מערכת הנהלת חשבונות{% endblock %}
+
+{% block content %}
+<div class="results-container">
+    <!-- Results Header -->
+    <div class="results-header">
+        <h2>תוצאות מיפוי תשלום חיצוני כרטיסים</h2>
+        <div class="processing-info">
+            <span><i class="fas fa-file-csv"></i>{{ session_data.original_filename }}</span>
+            <span><i class="fas fa-list"></i>{{ session_data.total_rows }} רשומות מתוך {{ session_data.original_rows }}</span>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="{{ url_for('download_filtered_csv', session_id=session_id) }}?status_active=true&type_sale=true&price_not_zero=true&payment_type_external=true" class="download-btn">
+           להורדת טבלה מפורטת
+                    <i class="fas fa-download"></i>
+        </a>
+        {% if session_data.summary_data %}
+        <a href="{{ url_for('download_summary_csv', session_id=session_id) }}" class="download-btn">
+להורדת טבלה מסוכמת
+            <i class="fas fa-download"></i>        
+</a>
+        {% endif %}
+        <a href="{{ url_for('payment_mapping_page') }}" class="new-file-btn">
+
+            למיפוי קובץ חדש
+                        <i class="fas fa-plus"></i>
+        </a>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="summary-stats">
+        <div class="stat-card">
+            <div class="number">{{ session_data.total_rows }}</div>
+            <div class="label">שורות מפורטות</div>
+        </div>
+        {% if session_data.summary_data %}
+        <div class="stat-card">
+            <div class="number">{{ session_data.summary_rows }}</div>
+            <div class="label">שורות מסוכמות</div>
+        </div>
+        {% endif %}
+        <div class="stat-card">
+            <div class="number">{{ session_data.columns|length }}</div>
+            <div class="label">עמודות</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">{{ session_data.original_rows }}</div>
+            <div class="label">שורות מקור</div>
+        </div>
+    </div>
+
+    <!-- Side-by-Side Tables -->
+    <div class="tables-container">
+        <!-- Detailed Table -->
+        <div class="table-section">
+            <h4>טבלה מפורטת</h4>
+            <div class="table-info">
+                <span><i class="fas fa-table"></i>{{ session_data.total_rows }} שורות</span>
+                <span><i class="fas fa-filter"></i> Status = Active, Type = Sale, price != 0, PayType_External</span>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            {% for column in session_data.columns %}
+                            <th>{{ column }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in session_data.filtered_data[:50] %}
+                        <tr>
+                            {% for column in session_data.columns %}
+                            <td>{{ row[column] if row[column] is not none else '' }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-pagination">
+                <p>מציג {{ [session_data.filtered_data|length, 50]|min }} מתוך {{ session_data.total_rows }} שורות</p>
+                {% if session_data.total_rows > 50 %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Summary Table -->
+        {% if session_data.summary_data %}
+        <div class="table-section">
+            <h4>טבלה מסוכמת</h4>
+            <div class="table-info">
+                <span><i class="fas fa-users"></i>{{ session_data.summary_rows }} שורות</span>
+                <span><i class="fas fa-calculator"></i>מוצר, משתמש, כמות ומחיר</span>
+            </div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            {% for column in session_data.summary_columns %}
+                            <th>{{ column }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in session_data.summary_data %}
+                        <tr>
+                            {% for column in session_data.summary_columns %}
+                            <td>
+                                {% if column == 'Amount (Count)' %}
+                                    <strong>{{ row[column] }}</strong>
+                                {% elif 'price' in column.lower() %}
+                                    {{ "%.2f"|format(row[column]) if row[column] is not none else '' }}
+                                {% else %}
+                                    {{ row[column] if row[column] is not none else '' }}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-pagination">
+                <p>מציג {{ session_data.summary_data|length }} שורות</p>
+            </div>
+        </div>
+        {% else %}
+        <div class="table-section">
+            <h4>טבלה מסוכמת</h4>
+            <div style="padding: 40px; text-align: center; color: var(--dark-gray);">
+                <i class="fas fa-info-circle" style="font-size: 3rem; margin-bottom: 20px; color: var(--hapoel-red);"></i>
+                <p>לא ניתן ליצור סיכום - עמודות User Id, Fan/Company או Product לא נמצאו בקובץ</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

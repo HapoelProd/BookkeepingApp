@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="results-container">
+    <div class="results-header">
+        <h2> תוצאות העיבוד</h2>
+        <div class="processing-info">
+            <span><i class="fas fa-file-alt"></i>{{ session_data.original_filename }}</span>
+        </div>
+    </div>
+
+    <div class="action-buttons">
+        <a href="{{ url_for('download_file', session_id=session_id) }}" class="download-btn">
+           להורדת טבלה 
+                    <i class="fas fa-download"></i>
+        </a>
+        <a href="{{ url_for('home_page') }}" class="new-file-btn">
+            למיפוי קובץ חדש
+                    <i class="fas fa-plus"></i>
+        </a>
+    </div>
+
+    <div class="balance-validation">
+        <h3>בדיקת איזון</h3>
+        <div class="validation-grid">
+            {% for sheet_name, validation in session_data.validation.items() %}
+            <div class="validation-card {{ 'balanced' if validation.balanced else 'unbalanced' }}">
+                <div class="validation-header">
+                    <h4>{{ sheet_name }}</h4>
+                    {% if validation.balanced %}
+                    <i class="fas fa-check-circle"></i>
+                    {% endif %}
+                </div>
+                <div class="validation-details">
+                    <div class="amount-row">
+                        <span>חובה:</span>
+                        <span>{{ "{:,.2f}".format(validation.total_debit) }}</span>
+                    </div>
+                    <div class="amount-row">
+                        <span>זכות:</span>
+                        <span>{{ "{:,.2f}".format(validation.total_credit) }}</span>
+                    </div>
+                    <div class="amount-row difference">
+                        <span>הפרש:</span>
+                        <span>{{ "{:,.2f}".format(validation.difference) }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Problematic Transactions Section -->
+    {% if session_data.problematic_transactions is defined and not session_data.problematic_transactions.empty %}
+    <div class="problematic-transactions-section">
+        <h3>עסקאות בעייתיות</h3>
+        <div class="problematic-info">
+            <p>נמצאו עסקאות בגיליונות שבהם יש פער בין חובה לזכות</p>
+            <div class="action-buttons">
+                <a href="{{ url_for('download_problematic_transactions', session_id=session_id) }}" class="download-btn">
+                    הורדת עסקאות בעייתיות
+                    <i class="fas fa-download"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table problematic-table">
+                <thead>
+                    <tr>
+                        {% for column in session_data.problematic_transactions.columns %}
+                        <th>{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for index, row in session_data.problematic_transactions.head(50).iterrows() %}
+                    <tr>
+                        {% for column in session_data.problematic_transactions.columns %}
+                            {% set value = row[column] %}
+                            <td>
+                                {% if column == 'קישור טרנזקציה' and value %}
+                                    <a href="{{ value }}" target="_blank" class="transaction-link">
+                                        צפה בטרנזקציה <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                {% else %}
+                                    {{ value if value == value else '' }}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if session_data.problematic_transactions|length > 50 %}
+            <div class="table-pagination">
+                <p>מוצגות 50 השורות הראשונות מתוך {{ session_data.problematic_transactions|length }}</p>
+                <small>להצגת כל הנתונים, הורד את הקובץ</small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="sheets-container">
+        <h3>גיליונות</h3>
+        <div class="tabs-container">
+            <div class="tabs-nav">
+                <button class="tab-btn active" data-sheet="without_ad">ללא פרסומים</button>
+                <button class="tab-btn" data-sheet="advertisement">פרסומים</button>
+                <button class="tab-btn" data-sheet="rest">נתונים נוספים</button>
+                <button class="tab-btn" data-sheet="summary">סיכום</button>
+            </div>
+
+            <div class="tabs-content">
+                {% for sheet_name, df in session_data.results.items() %}
+                    {% if sheet_name != 'filename' and sheet_name != 'output_path' %}
+                    <div class="tab-content {{ 'active' if loop.first else '' }}" id="tab-{{ sheet_name }}">
+                        <div class="table-info">
+                            <span><i class="fas fa-table"></i> {{ df|length }} שורות</span>
+                            <span><i class="fas fa-columns"></i> {{ df.columns|length }} עמודות</span>
+                        </div>
+
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        {% for column in df.columns %}
+                                        <th>{{ column }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for index, row in df.head(50).iterrows() %}
+                                    <tr>
+                                        {% for value in row %}
+                                        <td>{{ value if value == value else '' }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+
+                            {% if df|length > 50 %}
+                            <div class="table-pagination">
+                                <p>מוצגות 50 השורות הראשונות מתוך {{ df|length }}</p>
+                                <small>להצגת כל הנתונים, הורד את קובץ ה-Excel</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const sheetName = this.dataset.sheet;
+
+            // Remove active class from all buttons and contents
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked button
+            this.classList.add('active');
+
+            // Show corresponding content
+            const targetContent = document.getElementById(`tab-${sheetName}`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
