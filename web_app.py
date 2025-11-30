@@ -192,42 +192,53 @@ class BookkeepingProcessor:
             'שם מוצר': '', 'סכום של חובה': '', 'סכום של זכות': ''
         })
 
-        # Revenue entries from actual data
-        revenue_summary = {}
+        # Process entries from actual data - include ALL products and both debit/credit
+        summary_entries = {}
+        total_debit = 0
+        total_credit = 0
+
         for sheet_name, df in dataframes_dict.items():
             if len(df) > 0:
-                revenue_data = df[df['חשבון בזכות'].notna() & (df['זכות'] > 0)].groupby([
-                    'חשבון בזכות', 'שם המוצר'
-                ]).agg({'זכות': 'sum'}).reset_index()
-
-                for _, row in revenue_data.iterrows():
-                    account = row['חשבון בזכות']
-                    product = row['שם המוצר']
-                    amount = row['זכות']
-
-                    if account in [70001, 70100]:
+                # Process each row to capture all products and amounts
+                for _, row in df.iterrows():
+                    product = row.get('שם המוצר', '')
+                    if pd.isna(product) or product == '':
                         continue
 
-                    key = (account, product)
-                    if key not in revenue_summary:
-                        revenue_summary[key] = 0
-                    revenue_summary[key] += amount
+                    # Handle debit entries
+                    if 'חשבון בחובה' in df.columns and pd.notna(row.get('חשבון בחובה')):
+                        debit_account = row['חשבון בחובה']
+                        debit_amount = row.get('חובה', 0)
+                        if debit_amount > 0:
+                            key = ('debit', debit_account, product)
+                            if key not in summary_entries:
+                                summary_entries[key] = {'debit': 0, 'credit': 0, 'account_debit': debit_account, 'account_credit': ''}
+                            summary_entries[key]['debit'] += debit_amount
+                            total_debit += debit_amount
 
-        # Add revenue entries
-        for (account, product), amount in revenue_summary.items():
-            if amount > 0:
+                    # Handle credit entries
+                    if 'חשבון בזכות' in df.columns and pd.notna(row.get('חשבון בזכות')):
+                        credit_account = row['חשבון בזכות']
+                        credit_amount = row.get('זכות', 0)
+                        if credit_amount > 0:
+                            key = ('credit', credit_account, product)
+                            if key not in summary_entries:
+                                summary_entries[key] = {'debit': 0, 'credit': 0, 'account_debit': '', 'account_credit': credit_account}
+                            summary_entries[key]['credit'] += credit_amount
+                            total_credit += credit_amount
+
+        # Add entries to summary
+        for key, amounts in summary_entries.items():
+            entry_type, account, product = key
+            if amounts['debit'] > 0 or amounts['credit'] > 0:
                 summary_rows.append({
                     'תאריך פקודה': command_date,
-                    'חשבון חובה': '',
-                    'חשבון זכות': str(int(account)) if pd.notna(account) else '',
+                    'חשבון חובה': str(int(amounts['account_debit'])) if pd.notna(amounts['account_debit']) and amounts['account_debit'] != '' else '',
+                    'חשבון זכות': str(int(amounts['account_credit'])) if pd.notna(amounts['account_credit']) and amounts['account_credit'] != '' else '',
                     'שם מוצר': product,
-                    'סכום של חובה': '',
-                    'סכום של זכות': f"{amount:,.0f}".replace(',', ',')
+                    'סכום של חובה': f"{amounts['debit']:,.0f}" if amounts['debit'] > 0 else '',
+                    'סכום של זכות': f"{amounts['credit']:,.0f}" if amounts['credit'] > 0 else ''
                 })
-
-        # Totals
-        total_debit = 0
-        total_credit = sum(df['זכות'].sum() for df in dataframes_dict.values() if len(df) > 0)
 
         summary_rows.append({
             'תאריך פקודה': f'סה"כ {command_date}',
