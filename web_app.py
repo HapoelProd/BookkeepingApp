@@ -186,14 +186,8 @@ class BookkeepingProcessor:
 
         summary_rows = []
 
-        # Summary structure
-        summary_rows.append({
-            'תאריך פקודה': '', 'חשבון חובה': '', 'חשבון זכות': '',
-            'שם מוצר': '', 'סכום של חובה': '', 'סכום של זכות': ''
-        })
-
         # Process entries from actual data - include ALL products and both debit/credit
-        summary_entries = {}
+        product_summaries = {}
         total_debit = 0
         total_credit = 0
 
@@ -205,15 +199,20 @@ class BookkeepingProcessor:
                     if pd.isna(product) or product == '':
                         continue
 
+                    # Initialize product entry if not exists
+                    if product not in product_summaries:
+                        product_summaries[product] = {
+                            'debit': 0, 'credit': 0,
+                            'account_debit': '', 'account_credit': ''
+                        }
+
                     # Handle debit entries
                     if 'חשבון בחובה' in df.columns and pd.notna(row.get('חשבון בחובה')):
                         debit_account = row['חשבון בחובה']
                         debit_amount = row.get('חובה', 0)
                         if debit_amount > 0:
-                            key = ('debit', debit_account, product)
-                            if key not in summary_entries:
-                                summary_entries[key] = {'debit': 0, 'credit': 0, 'account_debit': debit_account, 'account_credit': ''}
-                            summary_entries[key]['debit'] += debit_amount
+                            product_summaries[product]['debit'] += debit_amount
+                            product_summaries[product]['account_debit'] = debit_account
                             total_debit += debit_amount
 
                     # Handle credit entries
@@ -221,24 +220,20 @@ class BookkeepingProcessor:
                         credit_account = row['חשבון בזכות']
                         credit_amount = row.get('זכות', 0)
                         if credit_amount > 0:
-                            key = ('credit', credit_account, product)
-                            if key not in summary_entries:
-                                summary_entries[key] = {'debit': 0, 'credit': 0, 'account_debit': '', 'account_credit': credit_account}
-                            summary_entries[key]['credit'] += credit_amount
+                            product_summaries[product]['credit'] += credit_amount
+                            product_summaries[product]['account_credit'] = credit_account
                             total_credit += credit_amount
 
-        # Add entries to summary
-        for key, amounts in summary_entries.items():
-            entry_type, account, product = key
-            if amounts['debit'] > 0 or amounts['credit'] > 0:
-                summary_rows.append({
-                    'תאריך פקודה': command_date,
-                    'חשבון חובה': str(int(amounts['account_debit'])) if pd.notna(amounts['account_debit']) and amounts['account_debit'] != '' else '',
-                    'חשבון זכות': str(int(amounts['account_credit'])) if pd.notna(amounts['account_credit']) and amounts['account_credit'] != '' else '',
-                    'שם מוצר': product,
-                    'סכום של חובה': f"{amounts['debit']:,.0f}" if amounts['debit'] > 0 else '',
-                    'סכום של זכות': f"{amounts['credit']:,.0f}" if amounts['credit'] > 0 else ''
-                })
+        # Add all products to summary (even if they only have account info)
+        for product, amounts in product_summaries.items():
+            summary_rows.append({
+                'תאריך פקודה': command_date,
+                'חשבון חובה': str(int(amounts['account_debit'])) if pd.notna(amounts['account_debit']) and amounts['account_debit'] != '' else '',
+                'חשבון זכות': str(int(amounts['account_credit'])) if pd.notna(amounts['account_credit']) and amounts['account_credit'] != '' else '',
+                'שם מוצר': product,
+                'סכום של חובה': f"{amounts['debit']:,.0f}" if amounts['debit'] > 0 else '',
+                'סכום של זכות': f"{amounts['credit']:,.0f}" if amounts['credit'] > 0 else ''
+            })
 
         summary_rows.append({
             'תאריך פקודה': f'סה"כ {command_date}',
