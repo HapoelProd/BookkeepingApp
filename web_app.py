@@ -849,7 +849,13 @@ def not_found(e):
     return render_template('upload.html'), 404
 
 if __name__ == '__main__':
-    print(" הפועל ירושלים כדורסל - מערכת הנהלת חשבונות")
-    print(" האפליקציה רצה על: http://localhost:5001")
-    print(" תיקיית עבודה:", os.getcwd())
-    app.run(debug=True, host='localhost', port=5001)
+    # Check if running locally or in production
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('RAILWAY_ENVIRONMENT') != 'production'
+
+    if debug:
+        print(" הפועל ירושלים כדורסל - מערכת הנהלת חשבונות")
+        print(f" האפליקציה רצה על: http://localhost:{port}")
+        print(" תיקיית עבודה:", os.getcwd())
+
+    app.run(debug=debug, host='0.0.0.0', port=port)
