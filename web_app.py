@@ -157,9 +157,8 @@ class BookkeepingProcessor:
         """Create Excel format summary (exact logic from your script)"""
         # Get command date
         all_dates = []
+        # Only use the 'rest' dataframe (נתונים נוספים) for summary
         dataframes_dict = {
-            'without_ad': self.without_advertisement,
-            'advertisement': self.advertisment,
             'rest': self.rest
         }
 
