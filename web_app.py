@@ -78,8 +78,29 @@ class BookkeepingProcessor:
         seg_id = code.isna().cumsum()
         seg_has_4118 = (code == 4118).groupby(seg_id).transform("any")
 
-        self.advertisment = only_79991[seg_has_4118].copy()
-        self.without_advertisement = only_79991[~seg_has_4118].copy()
+        # First split by segments containing 4118
+        segment_based_ad = only_79991[seg_has_4118].copy()
+        segment_based_without_ad = only_79991[~seg_has_4118].copy()
+
+        # Additionally, find any rows with "פרסום" in the product name that might not be in 4118 segments
+        # and move them to advertisement sheet
+        product_contains_ad = only_79991['InstallmentProducts'].str.contains('פרסום', na=False)
+
+        # Combine both conditions: either in 4118 segment OR contains "פרסום"
+        should_be_in_ad = seg_has_4118 | product_contains_ad
+
+        self.advertisment = only_79991[should_be_in_ad].copy()
+        self.without_advertisement = only_79991[~should_be_in_ad].copy()
+
+        # Fix 2: Move any פרסום entries from rest to advertisement sheet
+        if len(rest) > 0:
+            rest_parsoom_mask = rest['InstallmentProducts'].str.contains('פרסום', na=False)
+            parsoom_from_rest = rest[rest_parsoom_mask].copy()
+            rest = rest[~rest_parsoom_mask].copy()
+
+            # Add פרסום entries from rest to advertisement sheet
+            if len(parsoom_from_rest) > 0:
+                self.advertisment = pd.concat([self.advertisment, parsoom_from_rest], ignore_index=True)
 
         # Fix 1: Drop rows where שם המוצר = "Other Payment" from rest
         # First apply column renaming to rest to get Hebrew column names
