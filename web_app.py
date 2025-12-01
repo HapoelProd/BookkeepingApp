@@ -227,20 +227,20 @@ class BookkeepingProcessor:
                             'account_debit': '', 'account_credit': ''
                         }
 
-                    # Handle debit entries
+                    # Handle debit entries (using Hebrew column names) - include ALL amounts, not just positive
                     if 'חשבון בחובה' in df.columns and pd.notna(row.get('חשבון בחובה')):
                         debit_account = row['חשבון בחובה']
                         debit_amount = row.get('חובה', 0)
-                        if debit_amount > 0:
+                        if debit_amount != 0:  # Include negative amounts too
                             product_summaries[product]['debit'] += debit_amount
                             product_summaries[product]['account_debit'] = debit_account
                             total_debit += debit_amount
 
-                    # Handle credit entries
+                    # Handle credit entries (using Hebrew column names) - include ALL amounts, not just positive
                     if 'חשבון בזכות' in df.columns and pd.notna(row.get('חשבון בזכות')):
                         credit_account = row['חשבון בזכות']
                         credit_amount = row.get('זכות', 0)
-                        if credit_amount > 0:
+                        if credit_amount != 0:  # Include negative amounts too
                             product_summaries[product]['credit'] += credit_amount
                             product_summaries[product]['account_credit'] = credit_account
                             total_credit += credit_amount
@@ -252,8 +252,8 @@ class BookkeepingProcessor:
                 'חשבון חובה': str(int(amounts['account_debit'])) if pd.notna(amounts['account_debit']) and amounts['account_debit'] != '' else '',
                 'חשבון זכות': str(int(amounts['account_credit'])) if pd.notna(amounts['account_credit']) and amounts['account_credit'] != '' else '',
                 'שם מוצר': product,
-                'סכום של חובה': f"{amounts['debit']:,.0f}" if amounts['debit'] > 0 else '',
-                'סכום של זכות': f"{amounts['credit']:,.0f}" if amounts['credit'] > 0 else ''
+                'סכום של חובה': f"{amounts['debit']:,.0f}" if amounts['debit'] != 0 else '',
+                'סכום של זכות': f"{amounts['credit']:,.0f}" if amounts['credit'] != 0 else ''
             })
 
         summary_rows.append({
@@ -261,8 +261,8 @@ class BookkeepingProcessor:
             'חשבון חובה': '',
             'חשבון זכות': 'סה"כ(זכות)',
             'שם מוצר': 'סכום כולל',
-            'סכום של חובה': f"{total_debit:,.0f}",
-            'סכום של זכות': f"{total_credit:,.0f}"
+            'סכום של חובה': f"{total_debit:,.2f}",
+            'סכום של זכות': f"{total_credit:,.2f}"
         })
 
         self.excel_summary = pd.DataFrame(summary_rows)
